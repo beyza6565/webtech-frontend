@@ -21,7 +21,7 @@ const challenges = ref<Challenge[]>([
 
 onMounted(async () => {
   const response = await fetch('https://dailyhabit.onrender.com/api/v1/challenges')
-  const data = await response.json()
+  challenges.value = await response.json()
 
 })
 
