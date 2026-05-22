@@ -54,6 +54,7 @@ const pickRandom = () => {
   const offen = challenges.value.filter(c => !c.done)
   if (offen.length === 0) return
   const random = offen[Math.floor(Math.random() * offen.length)]
+  if (!random) return
   highlightedId.value = random.id
   // Kategorie zurücksetzen damit die Challenge sichtbar ist
   selectedCategory.value = 'Alle'
