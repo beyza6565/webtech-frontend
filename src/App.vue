@@ -1,24 +1,16 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
     <div class="container">
-      <a class="navbar-brand" href="#"> Daily Habits</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <RouterLink class="nav-link" to="/">Home</RouterLink>
-          </li>
-          <li class="nav-item">
-            <RouterLink class="nav-link" to="/about">Über das Projekt</RouterLink>
-          </li>
-        </ul>
-      </div>
+      <a class="navbar-brand fw-bold" href="#">
+        <i class="bi bi-rocket-takeoff-fill text-primary me-2"></i>Daily Habits
+      </a>
+      <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-2 shadow-sm">
+        <i class="bi bi-fire text-danger me-1"></i>3 Tage Streak
+      </span>
     </div>
   </nav>
 
@@ -26,8 +18,10 @@ import { RouterLink, RouterView } from 'vue-router'
 </template>
 
 <style>
-/* Ein globales CSS, damit der Hintergrund leicht grau ist und die Cards besser wirken */
 body {
-  background-color: #f8f9fa;
+  background-color: #f0f4f8;
+}
+.btn {
+  transition: all 0.3s ease;
 }
 </style>
