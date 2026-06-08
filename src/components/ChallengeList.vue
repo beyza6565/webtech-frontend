@@ -12,6 +12,12 @@ interface Challenge {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com'
 const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
+const selectedCategory = ref('Alle')
+
+const buildChallengesUrl = (category = selectedCategory.value) => {
+  if (category === 'Alle') return CHALLENGES_API_URL
+  return `${CHALLENGES_API_URL}?category=${encodeURIComponent(category)}`
+}
 
 const challenges = ref<Challenge[]>([
   { id: 1, title: '10.000 Schritte gehen',category: 'Fitness', done: false},
@@ -22,20 +28,34 @@ const challenges = ref<Challenge[]>([
   { id: 6, title: 'Zimmer aufräumen', category: 'Alltag', done: false},
 ])
 
-const loadChallenges = async () => {
-  const response = await fetch(CHALLENGES_API_URL)
-  challenges.value = await response.json()
+const requestError = ref('')
+
+const loadChallenges = async (category = selectedCategory.value) => {
+  requestError.value = ''
+
+  try {
+    const response = await fetch(buildChallengesUrl(category))
+
+    if (!response.ok) {
+      throw new Error('Challenges konnten nicht geladen werden.')
+    }
+
+    challenges.value = await response.json()
+  } catch {
+    requestError.value = 'Die Challenges konnten nicht geladen werden. Bitte versuche es erneut.'
+  }
 }
 
 onMounted(loadChallenges)
 
-const selectedCategory = ref('Alle')
+const filteredChallenges = computed(() => challenges.value)
+const highlighted = ref<Challenge | null>(null)
 
-const filteredChallenges = computed(() =>
-  selectedCategory.value === 'Alle'
-    ? challenges.value
-    : challenges.value.filter(c => c.category === selectedCategory.value)
-)
+const selectCategory = async (category: string) => {
+  selectedCategory.value = category
+  highlighted.value = null
+  await loadChallenges(category)
+}
 
 const progress = computed(() => {
   const total = challenges.value.length
@@ -43,26 +63,43 @@ const progress = computed(() => {
   return Math.round((challenges.value.filter(c => c.done).length / total) * 100)
 })
 
-const toggleDone = (challenge: Challenge) => {
-  challenge.done = !challenge.done
+const toggleDone = async (challenge: Challenge) => {
+  requestError.value = ''
+
+  try {
+    const response = await fetch(`${CHALLENGES_API_URL}/${challenge.id}/toggle`, {
+      method: 'PATCH',
+    })
+
+    if (!response.ok) {
+      throw new Error('Challenge konnte nicht aktualisiert werden.')
+    }
+
+    await loadChallenges()
+  } catch {
+    requestError.value = 'Die Challenge konnte nicht aktualisiert werden. Bitte versuche es erneut.'
+  }
 }
 
 // ── Random Challenge ──────────────────────────────────────
-const highlightedId = ref<number | null>(null)
+const pickRandom = async () => {
+  requestError.value = ''
+  try {
+    const response = await fetch(`${CHALLENGES_API_URL}/random`)
 
-const highlighted = computed(() =>
-  challenges.value.find(c => c.id === highlightedId.value) ?? null
-)
+    if (!response.ok) {
+      throw new Error('Zufällige Challenge konnte nicht geladen werden.')
+    }
 
-const pickRandom = () => {
-  const offen = challenges.value.filter(c => !c.done)
-  if (offen.length === 0) return
-  const random = offen[Math.floor(Math.random() * offen.length)]
-  if (!random) return
-  highlightedId.value = random.id
-  // Kategorie zurücksetzen damit die Challenge sichtbar ist
-  selectedCategory.value = 'Alle'
+    highlighted.value = await response.json()
+    selectedCategory.value = 'Alle'
+    await loadChallenges('Alle')
+  } catch {
+    requestError.value = 'Die zufällige Challenge konnte nicht geladen werden. Bitte versuche es erneut.'
+  }
 }
+
+  // Kategorie zurücksetzen damit die Challenge sichtbar ist
 // ─────────────────────────────────────────────────────────
 
 // Neue Challenge hinzufügen
@@ -141,10 +178,13 @@ const addChallenge = async () => {
           <button
             class="btn btn-warning fw-bold shadow-sm flex-grow-1"
             @click="pickRandom"
-            :disabled="challenges.filter(c => !c.done).length === 0"
           >
             <i class="bi bi-shuffle me-2"></i>Zufällige Challenge
           </button>
+        </div>
+
+        <div v-if="requestError" class="alert alert-danger rounded-3">
+          {{ requestError }}
         </div>
 
         <!-- Zufällige Challenge Anzeige -->
@@ -158,7 +198,7 @@ const addChallenge = async () => {
           </div>
           <button
             class="btn-close ms-auto"
-            @click="highlightedId = null"
+            @click="highlighted = null"
           ></button>
         </div>
 
@@ -171,7 +211,7 @@ const addChallenge = async () => {
         </div>
 
         <!-- Kategoriefilter -->
-        <CategoryFilter v-model:selected="selectedCategory" />
+        <CategoryFilter :selected="selectedCategory" @update:selected="selectCategory" />
 
         <!-- Challenge-Karten mit v-for ✅ -->
         <div class="d-flex flex-column gap-3">
@@ -181,7 +221,7 @@ const addChallenge = async () => {
           >
             <!-- Hervorhebung der zufälligen Challenge -->
             <div
-              v-if="challenge.id === highlightedId"
+              v-if="challenge.id === highlighted?.id"
               class="border border-warning border-3 rounded-4"
             >
               <ChallengeCard :challenge="challenge" @toggle="toggleDone" />
