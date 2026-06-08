@@ -10,6 +10,9 @@ interface Challenge {
   done: boolean
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com'
+const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
+
 const challenges = ref<Challenge[]>([
   { id: 1, title: '10.000 Schritte gehen',category: 'Fitness', done: false},
   { id: 2, title: '15 Minuten lesen',category: 'Lernen', done: true},
@@ -19,11 +22,12 @@ const challenges = ref<Challenge[]>([
   { id: 6, title: 'Zimmer aufräumen', category: 'Alltag', done: false},
 ])
 
-onMounted(async () => {
-  const response = await fetch('https://dailyhabit.onrender.com/api/v1/challenges')
+const loadChallenges = async () => {
+  const response = await fetch(CHALLENGES_API_URL)
   challenges.value = await response.json()
+}
 
-})
+onMounted(loadChallenges)
 
 const selectedCategory = ref('Alle')
 
@@ -64,16 +68,40 @@ const pickRandom = () => {
 // Neue Challenge hinzufügen
 const newTitle    = ref('')
 const newCategory = ref('Alltag')
+const addChallengeError = ref('')
+const isSavingChallenge = ref(false)
+const closeAddModalButton = ref<HTMLButtonElement | null>(null)
 
-const addChallenge = () => {
+const addChallenge = async () => {
+  addChallengeError.value = ''
   if (newTitle.value.trim() === '') return
-  challenges.value.push({
-    id:       Date.now(),
-    title:    newTitle.value.trim(),
-    category: newCategory.value,
-    done:     false,
-  })
-  newTitle.value = ''
+
+  try {
+    isSavingChallenge.value = true
+    const response = await fetch(CHALLENGES_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: newTitle.value.trim(),
+        category: newCategory.value,
+        done: false,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Challenge konnte nicht gespeichert werden.')
+    }
+
+    await loadChallenges()
+    newTitle.value = ''
+    closeAddModalButton.value?.click()
+  } catch {
+    addChallengeError.value = 'Die Challenge konnte nicht gespeichert werden. Bitte versuche es erneut.'
+  } finally {
+    isSavingChallenge.value = false
+  }
 }
 </script>
 
@@ -180,10 +208,14 @@ const addChallenge = () => {
             <h5 class="modal-title fw-bold">
               <i class="bi bi-plus-circle me-2 text-primary"></i>Neue Aufgabe
             </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button ref="closeAddModalButton" type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
 
           <div class="modal-body">
+            <div v-if="addChallengeError" class="alert alert-danger rounded-3">
+              {{ addChallengeError }}
+            </div>
+
             <div class="mb-3">
               <label class="form-label fw-semibold">Titel</label>
               <input
@@ -208,10 +240,10 @@ const addChallenge = () => {
             <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Abbrechen</button>
             <button
               class="btn btn-primary rounded-3 px-4"
-              data-bs-dismiss="modal"
+              :disabled="isSavingChallenge"
               @click="addChallenge"
             >
-              Speichern
+              {{ isSavingChallenge ? 'Speichern...' : 'Speichern' }}
             </button>
           </div>
 
