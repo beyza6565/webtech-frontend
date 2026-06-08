@@ -4,7 +4,7 @@ import ChallengeList from '../ChallengeList.vue'
 import ChallengeCard from '../ChallengeCard.vue'
 
 interface Challenge {
-  id: number
+  id?: number
   title: string
   category: string
   done: boolean
@@ -63,17 +63,39 @@ describe('ChallengeList', () => {
     expect(wrapper.text()).not.toContain('Read')
   })
 
-  it('loads and displays a random challenge from the backend', async () => {
-    const randomChallenge = { id: 3, title: 'Drink water', category: 'Gesundheit', done: false }
+  it('loads and displays a generated challenge suggestion from the backend', async () => {
+    const suggestion = { title: 'Drink water', category: 'Gesundheit', done: false }
 
     fetchMock
       .mockReturnValueOnce(okResponse([
         { id: 1, title: 'Workout', category: 'Fitness', done: false },
       ]))
-      .mockReturnValueOnce(okChallengeResponse(randomChallenge))
+      .mockReturnValueOnce(okChallengeResponse(suggestion))
+
+    const wrapper = mount(ChallengeList)
+    await flushPromises()
+
+    await wrapper.find('.btn-warning').trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}/suggestions/random`)
+    expect(wrapper.text()).toContain('Drink water')
+    expect(wrapper.text()).toContain('Generierter Challenge-Vorschlag')
+    expect(wrapper.text()).toContain('Challenge übernehmen')
+  })
+
+  it('accepts a generated challenge suggestion through POST and reloads the list', async () => {
+    const suggestion = { title: 'Drink water', category: 'Gesundheit', done: false }
+
+    fetchMock
       .mockReturnValueOnce(okResponse([
         { id: 1, title: 'Workout', category: 'Fitness', done: false },
-        randomChallenge,
+      ]))
+      .mockReturnValueOnce(okChallengeResponse(suggestion))
+      .mockReturnValueOnce(okEmptyResponse())
+      .mockReturnValueOnce(okResponse([
+        { id: 1, title: 'Workout', category: 'Fitness', done: false },
+        { id: 3, ...suggestion },
       ]))
 
     const wrapper = mount(ChallengeList)
@@ -82,10 +104,19 @@ describe('ChallengeList', () => {
     await wrapper.find('.btn-warning').trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}/random`)
-    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL)
+    await wrapper.findAll('button').find(button => button.text().includes('Challenge übernehmen'))?.trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(suggestion),
+    })
+    expect(fetchMock).toHaveBeenNthCalledWith(4, API_URL)
+    expect(wrapper.text()).toContain('Challenge wurde übernommen.')
     expect(wrapper.text()).toContain('Drink water')
-    expect(wrapper.text()).toContain('Deine Challenge')
   })
 
   it('toggles a challenge through the backend and reloads the list', async () => {

@@ -10,6 +10,12 @@ interface Challenge {
   done: boolean
 }
 
+interface ChallengeSuggestion {
+  title: string
+  category: string
+  done: boolean
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com'
 const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
 const selectedCategory = ref('Alle')
@@ -49,11 +55,13 @@ const loadChallenges = async (category = selectedCategory.value) => {
 onMounted(loadChallenges)
 
 const filteredChallenges = computed(() => challenges.value)
-const highlighted = ref<Challenge | null>(null)
+const generatedChallenge = ref<ChallengeSuggestion | null>(null)
+const suggestionSuccess = ref('')
+const isLoadingSuggestion = ref(false)
+const isSavingSuggestion = ref(false)
 
 const selectCategory = async (category: string) => {
   selectedCategory.value = category
-  highlighted.value = null
   await loadChallenges(category)
 }
 
@@ -84,18 +92,20 @@ const toggleDone = async (challenge: Challenge) => {
 // ── Random Challenge ──────────────────────────────────────
 const pickRandom = async () => {
   requestError.value = ''
+  suggestionSuccess.value = ''
   try {
-    const response = await fetch(`${CHALLENGES_API_URL}/random`)
+    isLoadingSuggestion.value = true
+    const response = await fetch(`${CHALLENGES_API_URL}/suggestions/random`)
 
     if (!response.ok) {
       throw new Error('Zufällige Challenge konnte nicht geladen werden.')
     }
 
-    highlighted.value = await response.json()
-    selectedCategory.value = 'Alle'
-    await loadChallenges('Alle')
+    generatedChallenge.value = await response.json()
   } catch {
     requestError.value = 'Die zufällige Challenge konnte nicht geladen werden. Bitte versuche es erneut.'
+  } finally {
+    isLoadingSuggestion.value = false
   }
 }
 
@@ -103,6 +113,35 @@ const pickRandom = async () => {
 // ─────────────────────────────────────────────────────────
 
 // Neue Challenge hinzufügen
+const acceptGeneratedChallenge = async () => {
+  requestError.value = ''
+  suggestionSuccess.value = ''
+  if (!generatedChallenge.value) return
+
+  try {
+    isSavingSuggestion.value = true
+    const response = await fetch(CHALLENGES_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(generatedChallenge.value),
+    })
+
+    if (!response.ok) {
+      throw new Error('Challenge konnte nicht gespeichert werden.')
+    }
+
+    await loadChallenges()
+    generatedChallenge.value = null
+    suggestionSuccess.value = 'Challenge wurde übernommen.'
+  } catch {
+    requestError.value = 'Die Challenge konnte nicht übernommen werden. Bitte versuche es erneut.'
+  } finally {
+    isSavingSuggestion.value = false
+  }
+}
+
 const newTitle    = ref('')
 const newCategory = ref('Alltag')
 const addChallengeError = ref('')
@@ -178,8 +217,9 @@ const addChallenge = async () => {
           <button
             class="btn btn-warning fw-bold shadow-sm flex-grow-1"
             @click="pickRandom"
+            :disabled="isLoadingSuggestion"
           >
-            <i class="bi bi-shuffle me-2"></i>Zufällige Challenge
+            <i class="bi bi-shuffle me-2"></i>{{ isLoadingSuggestion ? 'Generiere...' : 'Zufällige Challenge' }}
           </button>
         </div>
 
@@ -187,19 +227,32 @@ const addChallenge = async () => {
           {{ requestError }}
         </div>
 
+        <div v-if="suggestionSuccess" class="alert alert-success rounded-3">
+          {{ suggestionSuccess }}
+        </div>
+
         <!-- Zufällige Challenge Anzeige -->
-        <div v-if="highlighted" class="alert border-0 rounded-4 shadow-sm mb-3 d-flex align-items-center gap-3"
+        <div v-if="generatedChallenge" class="alert border-0 rounded-4 shadow-sm mb-3 d-flex align-items-center gap-3"
              style="background: linear-gradient(135deg, #fff3cd, #ffe69c);">
           <span style="font-size: 2rem;">🎯</span>
-          <div>
-            <div class="fw-bold">Deine Challenge für heute:</div>
-            <div class="fs-5 fw-bold text-dark">{{ highlighted.title }}</div>
-            <span class="badge bg-secondary rounded-pill">{{ highlighted.category }}</span>
+          <div class="flex-grow-1">
+            <div class="fw-bold">Generierter Challenge-Vorschlag:</div>
+            <div class="fs-5 fw-bold text-dark">{{ generatedChallenge.title }}</div>
+            <span class="badge bg-secondary rounded-pill">{{ generatedChallenge.category }}</span>
           </div>
-          <button
-            class="btn-close ms-auto"
-            @click="highlighted = null"
-          ></button>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-success fw-bold"
+              :disabled="isSavingSuggestion"
+              @click="acceptGeneratedChallenge"
+            >
+              {{ isSavingSuggestion ? 'Speichern...' : 'Challenge übernehmen' }}
+            </button>
+            <button
+              class="btn-close"
+              @click="generatedChallenge = null"
+            ></button>
+          </div>
         </div>
 
         <!-- Keine offenen Challenges mehr -->
@@ -220,13 +273,7 @@ const addChallenge = async () => {
             :key="challenge.id"
           >
             <!-- Hervorhebung der zufälligen Challenge -->
-            <div
-              v-if="challenge.id === highlighted?.id"
-              class="border border-warning border-3 rounded-4"
-            >
-              <ChallengeCard :challenge="challenge" @toggle="toggleDone" />
-            </div>
-            <ChallengeCard v-else :challenge="challenge" @toggle="toggleDone" />
+            <ChallengeCard :challenge="challenge" @toggle="toggleDone" />
           </div>
         </div>
 
