@@ -8,7 +8,13 @@ interface Challenge {
 }
 
 defineProps<{ challenge: Challenge }>()
-defineEmits<{ (e: 'toggle', challenge: Challenge): void }>()
+
+// HIER NEU: Wir haben 'delete' und 'edit' zu den Emits hinzugefügt
+defineEmits<{
+  (e: 'toggle', challenge: Challenge): void
+  (e: 'delete', challenge: Challenge): void
+  (e: 'edit', challenge: Challenge): void
+}>()
 </script>
 
 <template>
@@ -18,7 +24,6 @@ defineEmits<{ (e: 'toggle', challenge: Challenge): void }>()
   >
     <div class="card-body d-flex align-items-center justify-content-between p-3">
 
-      <!-- Icon + Text -->
       <div class="d-flex align-items-center gap-3">
         <div
           class="rounded-circle d-flex align-items-center justify-content-center"
@@ -39,16 +44,9 @@ defineEmits<{ (e: 'toggle', challenge: Challenge): void }>()
         </div>
       </div>
 
-      <!-- Toggle Button -->
-      <button
-        class="btn rounded-circle"
-        style="width: 45px; height: 45px;"
-        :class="challenge.done ? 'btn-success' : 'btn-outline-secondary'"
-        @click="$emit('toggle', challenge)"
-      >
-        <i class="bi fs-5" :class="challenge.done ? 'bi-check-lg' : 'bi-circle'"></i>
-      </button>
+      <div class="d-flex align-items-center gap-2">
 
-    </div>
-  </div>
-</template>
+        <button
+          class="btn btn-sm btn-outline-primary rounded-circle d-flex align-items-center justify-content-center"
+          style="width: 40px; height: 40px;"
+          @click="$emit('edit', challenge)"
