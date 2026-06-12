@@ -44,10 +44,11 @@ defineEmits<{
       </div>
 
       <div class="d-flex align-items-center gap-2">
-
         <button
           class="btn btn-sm btn-outline-primary rounded-circle d-flex align-items-center justify-content-center"
           style="width: 40px; height: 40px;"
+          data-bs-toggle="modal"
+          data-bs-target="#editChallengeModal"
           @click="$emit('edit', challenge)"
           title="Bearbeiten"
         >
@@ -64,12 +65,12 @@ defineEmits<{
         </button>
 
         <button
-          class="btn rounded-circle d-flex align-items-center justify-content-center"
-          style="width: 45px; height: 45px;"
-          :class="challenge.done ? 'btn-success' : 'btn-outline-secondary'"
+          class="btn btn-sm btn-outline-success rounded-circle d-flex align-items-center justify-content-center"
+          style="width: 40px; height: 40px;"
           @click="$emit('toggle', challenge)"
+          title="Erledigt/Offen ändern"
         >
-          <i class="bi fs-5" :class="challenge.done ? 'bi-check-lg' : 'bi-circle'"></i>
+          <i class="bi" :class="challenge.done ? 'bi-x-lg' : 'bi-check-lg'"></i>
         </button>
       </div>
 
