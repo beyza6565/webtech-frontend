@@ -74,7 +74,6 @@ defineEmits<{
 </template>
 
 <style scoped>
-/* Stellt sicher, dass bei extrem langen Titeln das Layout nicht bricht */
 .min-width-0 {
   min-width: 0;
 }
