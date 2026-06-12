@@ -9,7 +9,6 @@ interface Challenge {
 
 defineProps<{ challenge: Challenge }>()
 
-// HIER NEU: Wir haben 'delete' und 'edit' zu den Emits hinzugefügt
 defineEmits<{
   (e: 'toggle', challenge: Challenge): void
   (e: 'delete', challenge: Challenge): void
@@ -50,3 +49,30 @@ defineEmits<{
           class="btn btn-sm btn-outline-primary rounded-circle d-flex align-items-center justify-content-center"
           style="width: 40px; height: 40px;"
           @click="$emit('edit', challenge)"
+          title="Bearbeiten"
+        >
+          <i class="bi bi-pencil"></i>
+        </button>
+
+        <button
+          class="btn btn-sm btn-outline-danger rounded-circle d-flex align-items-center justify-content-center"
+          style="width: 40px; height: 40px;"
+          @click="$emit('delete', challenge)"
+          title="Löschen"
+        >
+          <i class="bi bi-trash"></i>
+        </button>
+
+        <button
+          class="btn rounded-circle d-flex align-items-center justify-content-center"
+          style="width: 45px; height: 45px;"
+          :class="challenge.done ? 'btn-success' : 'btn-outline-secondary'"
+          @click="$emit('toggle', challenge)"
+        >
+          <i class="bi fs-5" :class="challenge.done ? 'bi-check-lg' : 'bi-circle'"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</template>
