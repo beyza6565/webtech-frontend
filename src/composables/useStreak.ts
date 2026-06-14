@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com'
-const STREAK_API_URL = `${API_BASE_URL}/api/v1/streak`
+const STREAK_API_URL = `${API_BASE_URL.replace(/\/$/, '')}/api/v1/streak`
 
 // Modul-weit geteilte Refs — ein einziger Zustand für App.vue und ChallengeList.vue
 const streak = ref(0)
