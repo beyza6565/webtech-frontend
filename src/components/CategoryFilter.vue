@@ -8,6 +8,7 @@ const categories = [
   { name: 'Lernen',     icon: 'bi-book-fill'       },
   { name: 'Gesundheit', icon: 'bi-heart-fill'      },
   { name: 'Alltag',     icon: 'bi-house-fill'      },
+  { name: 'Sozial',     icon: 'bi-people-fill'     },
 ]
 </script>
 

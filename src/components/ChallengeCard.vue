@@ -1,11 +1,5 @@
 <script setup lang="ts">
-interface Challenge {
-  id: number
-  title: string
-  category: string
-  done: boolean
-  icon?: string
-}
+import type { Challenge } from '../types/challenge'
 
 defineProps<{ challenge: Challenge }>()
 
@@ -28,7 +22,7 @@ defineEmits<{
         style="width: 50px; height: 50px;"
         :class="challenge.done ? 'bg-success text-white' : 'bg-primary text-white bg-opacity-75'"
       >
-        <i class="bi fs-4" :class="challenge.icon ?? 'bi-star'"></i>
+        <i class="bi bi-star fs-4"></i>
       </div>
 
       <div class="flex-grow-1 min-width-0">

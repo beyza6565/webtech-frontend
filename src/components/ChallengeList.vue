@@ -2,22 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import ChallengeCard from './ChallengeCard.vue'
 import CategoryFilter from './CategoryFilter.vue'
-
-interface Challenge {
-  id: number
-  title: string
-  category: string
-  done: boolean
-}
-
-interface ChallengeSuggestion {
-  title: string
-  category: string
-  done: boolean
-}
+import type { Challenge, ChallengeSuggestion } from '../types/challenge'
+import { useStreak } from '../composables/useStreak'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com'
 const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
+const { refreshStreak } = useStreak()
 const selectedCategory = ref('Alle')
 
 const buildChallengesUrl = (category = selectedCategory.value) => {
@@ -25,7 +15,6 @@ const buildChallengesUrl = (category = selectedCategory.value) => {
   return `${CHALLENGES_API_URL}?category=${encodeURIComponent(category)}`
 }
 
-// HIER: Dummy-Daten entfernt. Das Array startet leer und wird über das Backend befüllt.
 const challenges = ref<Challenge[]>([])
 const requestError = ref('')
 
@@ -47,7 +36,6 @@ const loadChallenges = async (category = selectedCategory.value) => {
 
 onMounted(loadChallenges)
 
-const filteredChallenges = computed(() => challenges.value)
 const generatedChallenge = ref<ChallengeSuggestion | null>(null)
 const suggestionSuccess = ref('')
 const isLoadingSuggestion = ref(false)
@@ -77,6 +65,7 @@ const toggleDone = async (challenge: Challenge) => {
     }
 
     await loadChallenges()
+    void refreshStreak()
   } catch {
     requestError.value = 'Die Challenge konnte nicht aktualisiert werden. Bitte versuche es erneut.'
   }
@@ -163,6 +152,7 @@ const addChallenge = async () => {
 
     await loadChallenges()
     newTitle.value = ''
+    newCategory.value = 'Alltag'
     closeAddModalButton.value?.click()
   } catch {
     addChallengeError.value = 'Die Challenge konnte nicht gespeichert werden. Bitte versuche es erneut.'
@@ -220,7 +210,6 @@ const saveEditChallenge = async () => {
       body: JSON.stringify({
         title: editTitle.value.trim(),
         category: editCategory.value,
-        // Der Erledigt-Status soll beim Bearbeiten gleich bleiben
         done: challenges.value.find(c => c.id === editingChallengeId.value)?.done || false,
       }),
     })
@@ -230,7 +219,7 @@ const saveEditChallenge = async () => {
     }
 
     await loadChallenges()
-    closeEditModalButton.value?.click() // Edit Modal schließen
+    closeEditModalButton.value?.click()
   } catch {
     editChallengeError.value = 'Die Challenge konnte nicht aktualisiert werden. Bitte versuche es erneut.'
   } finally {
@@ -321,7 +310,7 @@ const saveEditChallenge = async () => {
 
         <div class="d-flex flex-column gap-3">
           <div
-            v-for="challenge in filteredChallenges"
+            v-for="challenge in challenges"
             :key="challenge.id"
           >
             <ChallengeCard
@@ -333,7 +322,7 @@ const saveEditChallenge = async () => {
           </div>
         </div>
 
-        <div v-if="filteredChallenges.length === 0" class="text-center py-5 text-muted">
+        <div v-if="challenges.length === 0" class="text-center py-5 text-muted">
           <i class="bi bi-emoji-neutral display-4"></i>
           <p class="mt-2">Keine Challenges gefunden.</p>
         </div>

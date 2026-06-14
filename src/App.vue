@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
+import { useStreak } from './composables/useStreak'
+
+const { streak, completedToday, refreshStreak } = useStreak()
+
+onMounted(refreshStreak)
 </script>
 
 <template>
@@ -8,8 +14,22 @@ import { RouterView } from 'vue-router'
       <a class="navbar-brand fw-bold" href="#">
         <i class="bi bi-rocket-takeoff-fill text-primary me-2"></i>Daily Habits
       </a>
-      <span class="badge bg-warning text-dark fs-6 rounded-pill px-3 py-2 shadow-sm">
-        <i class="bi bi-fire text-danger me-1"></i>3 Tage Streak
+
+      <span
+        v-if="streak === 0"
+        class="badge bg-secondary text-white fs-6 rounded-pill px-3 py-2 shadow-sm"
+        title="Noch keine Aktivität aufgezeichnet"
+      >
+        <i class="bi bi-fire me-1"></i>Noch keine Streak
+      </span>
+      <span
+        v-else
+        class="badge fs-6 rounded-pill px-3 py-2 shadow-sm"
+        :class="completedToday ? 'bg-warning text-dark' : 'bg-secondary text-white'"
+        :title="completedToday ? 'Heute bereits aktiv – Streak läuft!' : 'Heute noch keine Challenge erledigt – Streak in Gefahr'"
+      >
+        <i class="bi bi-fire me-1" :class="{ 'text-danger': completedToday }"></i>
+        {{ streak }} {{ streak === 1 ? 'Tag' : 'Tage' }} Streak
       </span>
     </div>
   </nav>
