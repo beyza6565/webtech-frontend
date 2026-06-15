@@ -19,6 +19,7 @@ const categories = [
       :key="cat.name"
       class="btn btn-sm rounded-pill fw-semibold"
       :class="selected === cat.name ? 'btn-dark' : 'btn-outline-secondary'"
+      :aria-pressed="selected === cat.name"
       @click="$emit('update:selected', cat.name)"
     >
       <i class="bi me-1" :class="cat.icon"></i>{{ cat.name }}

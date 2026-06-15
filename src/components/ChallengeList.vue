@@ -5,7 +5,7 @@ import CategoryFilter from './CategoryFilter.vue'
 import type { Challenge, ChallengeSuggestion } from '../types/challenge'
 import { useStreak } from '../composables/useStreak'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com').replace(/\/$/, '')
 const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
 const { refreshStreak } = useStreak()
 const selectedCategory = ref('Alle')
@@ -17,9 +17,11 @@ const buildChallengesUrl = (category = selectedCategory.value) => {
 
 const challenges = ref<Challenge[]>([])
 const requestError = ref('')
+const isLoadingChallenges = ref(false)
 
 const loadChallenges = async (category = selectedCategory.value) => {
   requestError.value = ''
+  isLoadingChallenges.value = true
 
   try {
     const response = await fetch(buildChallengesUrl(category))
@@ -31,6 +33,8 @@ const loadChallenges = async (category = selectedCategory.value) => {
     challenges.value = await response.json()
   } catch {
     requestError.value = 'Die Challenges konnten nicht geladen werden. Bitte versuche es erneut.'
+  } finally {
+    isLoadingChallenges.value = false
   }
 }
 
@@ -55,16 +59,20 @@ const progress = computed(() => {
 const toggleDone = async (challenge: Challenge) => {
   requestError.value = ''
 
+  // Optimistic update via the reactive state entry (not the emitted reference)
+  const local = challenges.value.find(c => c.id === challenge.id)
+  if (local) local.done = !local.done
+
   try {
     const response = await fetch(`${CHALLENGES_API_URL}/${challenge.id}/toggle`, {
       method: 'PATCH',
     })
 
     if (!response.ok) {
+      if (local) local.done = !local.done
       throw new Error('Challenge konnte nicht aktualisiert werden.')
     }
 
-    await loadChallenges()
     void refreshStreak()
   } catch {
     requestError.value = 'Die Challenge konnte nicht aktualisiert werden. Bitte versuche es erneut.'
@@ -189,6 +197,10 @@ const editChallengeError = ref('')
 const isSavingEdit = ref(false)
 const closeEditModalButton = ref<HTMLButtonElement | null>(null)
 
+const greetingHour = new Date().getHours()
+const greeting =
+  greetingHour < 12 ? 'Guten Morgen!' : greetingHour < 18 ? 'Guten Tag!' : 'Guten Abend!'
+
 const openEditModal = (challenge: Challenge) => {
   editingChallengeId.value = challenge.id
   editTitle.value = challenge.title
@@ -234,13 +246,16 @@ const saveEditChallenge = async () => {
       <div class="col-md-8 col-lg-6">
 
         <div class="text-center mb-4">
-          <h2 class="fw-bold">Guten Morgen, Beyza! 👋</h2>
+          <h2 class="fw-bold">{{ greeting }} 👋</h2>
           <p class="text-muted">Dein Fortschritt heute:</p>
           <div class="progress" style="height: 25px; border-radius: 15px;">
             <div
               class="progress-bar bg-success progress-bar-striped progress-bar-animated fw-bold"
               role="progressbar"
               :style="{ width: progress + '%' }"
+              :aria-valuenow="progress"
+              aria-valuemin="0"
+              aria-valuemax="100"
             >
               {{ progress }}%
             </div>
@@ -295,6 +310,7 @@ const saveEditChallenge = async () => {
             <button
               class="btn-close"
               @click="generatedChallenge = null"
+              aria-label="Vorschlag schließen"
             ></button>
           </div>
         </div>
@@ -308,7 +324,18 @@ const saveEditChallenge = async () => {
 
         <CategoryFilter :selected="selectedCategory" @update:selected="selectCategory" />
 
-        <div class="d-flex flex-column gap-3">
+        <div v-if="isLoadingChallenges && challenges.length === 0" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Wird geladen…</span>
+          </div>
+        </div>
+
+        <div v-else-if="!isLoadingChallenges && challenges.length === 0" class="text-center py-5 text-muted">
+          <i class="bi bi-emoji-neutral display-4"></i>
+          <p class="mt-2">Keine Challenges gefunden.</p>
+        </div>
+
+        <div v-else class="d-flex flex-column gap-3">
           <div
             v-for="challenge in challenges"
             :key="challenge.id"
@@ -322,20 +349,15 @@ const saveEditChallenge = async () => {
           </div>
         </div>
 
-        <div v-if="challenges.length === 0" class="text-center py-5 text-muted">
-          <i class="bi bi-emoji-neutral display-4"></i>
-          <p class="mt-2">Keine Challenges gefunden.</p>
-        </div>
-
       </div>
     </div>
 
-    <div class="modal fade" id="addChallengeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="addChallengeModal" tabindex="-1" aria-hidden="true" aria-labelledby="addChallengeModalLabel">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
 
           <div class="modal-header border-bottom-0">
-            <h5 class="modal-title fw-bold">
+            <h5 class="modal-title fw-bold" id="addChallengeModalLabel">
               <i class="bi bi-plus-circle me-2 text-primary"></i>Neue Aufgabe
             </h5>
             <button ref="closeAddModalButton" type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -383,12 +405,12 @@ const saveEditChallenge = async () => {
       </div>
     </div>
 
-    <div class="modal fade" id="editChallengeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="editChallengeModal" tabindex="-1" aria-hidden="true" aria-labelledby="editChallengeModalLabel">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
 
           <div class="modal-header border-bottom-0">
-            <h5 class="modal-title fw-bold">
+            <h5 class="modal-title fw-bold" id="editChallengeModalLabel">
               <i class="bi bi-pencil me-2 text-primary"></i>Aufgabe bearbeiten
             </h5>
             <button ref="closeEditModalButton" type="button" class="btn-close" data-bs-dismiss="modal"></button>

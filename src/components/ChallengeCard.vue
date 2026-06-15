@@ -42,6 +42,7 @@ defineEmits<{
           data-bs-target="#editChallengeModal"
           @click="$emit('edit', challenge)"
           title="Bearbeiten"
+          aria-label="Bearbeiten"
         >
           <i class="bi bi-pencil-fill"></i>
         </button>
@@ -50,6 +51,7 @@ defineEmits<{
           class="btn btn-sm btn-outline-danger border-0"
           @click="$emit('delete', challenge)"
           title="Löschen"
+          aria-label="Löschen"
         >
           <i class="bi bi-trash-fill"></i>
         </button>
@@ -58,6 +60,7 @@ defineEmits<{
           class="btn btn-sm btn-outline-success border-0"
           @click="$emit('toggle', challenge)"
           :title="challenge.done ? 'Wieder offen' : 'Erledigt'"
+          :aria-label="challenge.done ? 'Wieder offen' : 'Erledigt'"
         >
           <i class="bi" :class="challenge.done ? 'bi-arrow-counterclockwise' : 'bi-check-lg'"></i>
         </button>

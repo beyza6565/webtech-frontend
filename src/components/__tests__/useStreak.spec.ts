@@ -74,8 +74,7 @@ describe('Streak-Integration', () => {
     fetchMock
       .mockReturnValueOnce(okJson([challenge]))                           // onMounted loadChallenges
       .mockReturnValueOnce(okJson({}))                                    // PATCH /1/toggle
-      .mockReturnValueOnce(okJson([{ ...challenge, done: true }]))        // reload nach Toggle
-      .mockReturnValueOnce(okJson({ streak: 1, completedToday: true }))  // refreshStreak
+      .mockReturnValueOnce(okJson({ streak: 1, completedToday: true }))  // refreshStreak (optimistic: kein reload)
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
@@ -84,7 +83,6 @@ describe('Streak-Integration', () => {
     await flushPromises()
 
     expect(fetchMock).toHaveBeenNthCalledWith(2, `${CHALLENGES_URL}/1/toggle`, { method: 'PATCH' })
-    expect(fetchMock).toHaveBeenNthCalledWith(3, CHALLENGES_URL)
-    expect(fetchMock).toHaveBeenNthCalledWith(4, STREAK_URL)
+    expect(fetchMock).toHaveBeenNthCalledWith(3, STREAK_URL)
   })
 })

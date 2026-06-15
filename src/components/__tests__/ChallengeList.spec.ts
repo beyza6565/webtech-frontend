@@ -129,13 +129,13 @@ describe('ChallengeList', () => {
     expect(wrapper.text()).toContain('Drink water')
   })
 
-  it('toggles a challenge through the backend and reloads the list', async () => {
+  it('toggles a challenge through the backend using optimistic update', async () => {
     const challenge = { id: 1, title: 'Workout', category: 'Fitness', done: false }
 
     fetchMock
-      .mockReturnValueOnce(okResponse([challenge]))
-      .mockReturnValueOnce(okEmptyResponse())
-      .mockReturnValueOnce(okResponse([{ ...challenge, done: true }]))
+      .mockReturnValueOnce(okResponse([challenge]))           // initial load
+      .mockReturnValueOnce(okEmptyResponse())                  // PATCH toggle
+      .mockReturnValueOnce(okEmptyResponse())                  // refreshStreak (fire-and-forget)
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
@@ -144,7 +144,7 @@ describe('ChallengeList', () => {
     await flushPromises()
 
     expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}/1/toggle`, { method: 'PATCH' })
-    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(wrapper.text()).toContain('1 von 1 erledigt')
   })
 

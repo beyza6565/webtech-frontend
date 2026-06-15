@@ -3,7 +3,7 @@ import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { useStreak } from './composables/useStreak'
 
-const { streak, completedToday, refreshStreak } = useStreak()
+const { streak, completedToday, isLoadingStreak, refreshStreak } = useStreak()
 
 onMounted(refreshStreak)
 </script>
@@ -16,7 +16,14 @@ onMounted(refreshStreak)
       </a>
 
       <span
-        v-if="streak === 0"
+        v-if="isLoadingStreak"
+        class="badge bg-secondary text-white fs-6 rounded-pill px-3 py-2 shadow-sm"
+        title="Streak wird geladen…"
+      >
+        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Streak…
+      </span>
+      <span
+        v-else-if="streak === 0"
         class="badge bg-secondary text-white fs-6 rounded-pill px-3 py-2 shadow-sm"
         title="Noch keine Aktivität aufgezeichnet"
       >
