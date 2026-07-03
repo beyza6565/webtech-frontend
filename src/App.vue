@@ -16,7 +16,7 @@ onMounted(() => {
 </template>
 
 <style>
-/* STANDARD (HELL) */
+
 body {
   background-color: #f9fafb;
   color: #111;
@@ -30,13 +30,11 @@ body {
   padding: 40px 20px;
 }
 
-/* --- DARK MODE --- */
 body.dark {
   background-color: #0f172a;
   color: #e5e7eb;
 }
 
-/* Hier machen wir die weißen Karten und Container dunkel */
 body.dark .panel,
 body.dark .stat-card,
 body.dark .challenges-container,
@@ -72,15 +70,20 @@ body.dark .filter-btn:hover {
   color: white;
 }
 
-/* Die dunkle Modal-Kopfzeile anpassen */
 body.dark .modal-header,
 body.dark .modal-footer {
   border-color: #334155 !important;
 }
+
 body.dark .form-control,
 body.dark .form-select {
   background-color: #0f172a;
   border-color: #334155;
   color: white;
+}
+
+body.dark .form-control::placeholder {
+  color: #94a3b8;
+  opacity: 1;
 }
 </style>

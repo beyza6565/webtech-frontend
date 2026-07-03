@@ -15,7 +15,7 @@ import ChallengeList from '../components/ChallengeList.vue'
 <style scoped>
 .page {
   min-height: 100vh;
-  background: transparent; /* Geändert, damit App.vue den Hintergrund steuert */
+  background: transparent;
   padding: 30px;
 }
 

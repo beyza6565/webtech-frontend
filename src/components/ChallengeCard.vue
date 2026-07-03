@@ -9,7 +9,7 @@ defineEmits<{
   (e: 'edit', challenge: Challenge): void
 }>()
 
-// Ordnet jeder Kategorie die passenden Farben & Icons zu
+
 const catStyles = computed(() => {
   switch (props.challenge.category) {
     case 'Fitness': return { icon: 'bi-bicycle', color: 'text-primary', bg: 'bg-primary-subtle', badge: 'text-primary' }
