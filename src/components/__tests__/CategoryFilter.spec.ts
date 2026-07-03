@@ -20,13 +20,17 @@ describe('CategoryFilter', () => {
     }
   })
 
-  it('applies btn-dark to the active category and btn-outline-secondary to the others', () => {
+  it('applies the active class to the selected category and only filter-btn to the others', () => {
     const wrapper = mount(CategoryFilter, { props: { selected: 'Fitness' } })
 
     const fitnessButton = wrapper.findAll('button').find(b => b.text().includes('Fitness'))
     const alleButton = wrapper.findAll('button').find(b => b.text().includes('Alle'))
 
-    expect(fitnessButton?.classes()).toContain('btn-dark')
-    expect(alleButton?.classes()).toContain('btn-outline-secondary')
+    // Der ausgewählte Button hat die Klasse 'active'
+    expect(fitnessButton?.classes()).toContain('active')
+
+    // Der nicht-ausgewählte Button hat 'filter-btn', aber NICHT 'active'
+    expect(alleButton?.classes()).toContain('filter-btn')
+    expect(alleButton?.classes()).not.toContain('active')
   })
 })

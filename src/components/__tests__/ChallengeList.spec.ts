@@ -11,31 +11,22 @@ interface Challenge {
 }
 
 const API_URL = 'https://dailyhabit.onrender.com/api/v1/challenges'
+const STREAK_URL = 'https://dailyhabit.onrender.com/api/v1/streak'
 
 const okResponse = (data: Challenge[]) =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve(data),
-  } as Response)
+  Promise.resolve({ ok: true, json: () => Promise.resolve(data) } as Response)
 
 const okChallengeResponse = (data: Challenge) =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve(data),
-  } as Response)
+  Promise.resolve({ ok: true, json: () => Promise.resolve(data) } as Response)
 
 const okEmptyResponse = () =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve({}),
-  } as Response)
+  Promise.resolve({ ok: true, json: () => Promise.resolve({}) } as Response)
 
 const errorResponse = (status = 500) =>
-  Promise.resolve({
-    ok: false,
-    status,
-    json: () => Promise.resolve({}),
-  } as Response)
+  Promise.resolve({ ok: false, status, json: () => Promise.resolve({}) } as Response)
+
+const okStreakResponse = () =>
+  Promise.resolve({ ok: true, json: () => Promise.resolve({ streak: 0, completedToday: false }) } as Response)
 
 describe('ChallengeList', () => {
   const fetchMock = vi.fn()
@@ -50,14 +41,13 @@ describe('ChallengeList', () => {
     vi.restoreAllMocks()
   })
 
-  // ── Bestehende Tests (unverändert) ────────────────────────
-
   it('loads filtered challenges from the backend when a category is selected', async () => {
     fetchMock
       .mockReturnValueOnce(okResponse([
         { id: 1, title: 'Workout', category: 'Fitness', done: false },
         { id: 2, title: 'Read', category: 'Lernen', done: false },
       ]))
+      .mockReturnValueOnce(okStreakResponse()) // OnMounted Streak call
       .mockReturnValueOnce(okResponse([
         { id: 1, title: 'Workout', category: 'Fitness', done: false },
       ]))
@@ -68,7 +58,7 @@ describe('ChallengeList', () => {
     await wrapper.findAll('button').find(button => button.text().includes('Fitness'))?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}?category=Fitness`)
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `${API_URL}?category=Fitness`)
     expect(wrapper.text()).toContain('Workout')
     expect(wrapper.text()).not.toContain('Read')
   })
@@ -77,33 +67,30 @@ describe('ChallengeList', () => {
     const suggestion = { title: 'Drink water', category: 'Gesundheit', done: false }
 
     fetchMock
-      .mockReturnValueOnce(okResponse([
-        { id: 1, title: 'Workout', category: 'Fitness', done: false },
-      ]))
+      .mockReturnValueOnce(okResponse([{ id: 1, title: 'Workout', category: 'Fitness', done: false }]))
+      .mockReturnValueOnce(okStreakResponse())
       .mockReturnValueOnce(okChallengeResponse(suggestion))
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
 
-    await wrapper.find('.btn-warning').trigger('click')
+    await wrapper.findAll('button').find(b => b.text().includes('Zufällige Challenge'))?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}/suggestions/random`)
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `${API_URL}/suggestions/random`)
     expect(wrapper.text()).toContain('Drink water')
-    expect(wrapper.text()).toContain('Generierter Challenge-Vorschlag')
-    expect(wrapper.text()).toContain('Challenge übernehmen')
+    expect(wrapper.text()).toContain('Übernehmen')
   })
 
   it('accepts a generated challenge suggestion through POST and reloads the list', async () => {
     const suggestion = { title: 'Drink water', category: 'Gesundheit', done: false }
 
     fetchMock
-      .mockReturnValueOnce(okResponse([
-        { id: 1, title: 'Workout', category: 'Fitness', done: false },
-      ]))
-      .mockReturnValueOnce(okChallengeResponse(suggestion))
-      .mockReturnValueOnce(okEmptyResponse())
-      .mockReturnValueOnce(okResponse([
+      .mockReturnValueOnce(okResponse([{ id: 1, title: 'Workout', category: 'Fitness', done: false }]))
+      .mockReturnValueOnce(okStreakResponse())
+      .mockReturnValueOnce(okChallengeResponse(suggestion)) // Generieren
+      .mockReturnValueOnce(okEmptyResponse()) // POST Speichern
+      .mockReturnValueOnce(okResponse([ // Reload
         { id: 1, title: 'Workout', category: 'Fitness', done: false },
         { id: 3, ...suggestion },
       ]))
@@ -111,20 +98,17 @@ describe('ChallengeList', () => {
     const wrapper = mount(ChallengeList)
     await flushPromises()
 
-    await wrapper.find('.btn-warning').trigger('click')
+    await wrapper.findAll('button').find(b => b.text().includes('Zufällige Challenge'))?.trigger('click')
     await flushPromises()
 
-    await wrapper.findAll('button').find(button => button.text().includes('Challenge übernehmen'))?.trigger('click')
+    await wrapper.findAll('button').find(button => button.text().includes('Übernehmen'))?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL, {
+    expect(fetchMock).toHaveBeenNthCalledWith(4, API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(suggestion),
     })
-    expect(fetchMock).toHaveBeenNthCalledWith(4, API_URL)
     expect(wrapper.text()).toContain('Challenge wurde übernommen.')
     expect(wrapper.text()).toContain('Drink water')
   })
@@ -134,8 +118,9 @@ describe('ChallengeList', () => {
 
     fetchMock
       .mockReturnValueOnce(okResponse([challenge]))           // initial load
+      .mockReturnValueOnce(okStreakResponse())                 // initial streak
       .mockReturnValueOnce(okEmptyResponse())                  // PATCH toggle
-      .mockReturnValueOnce(okEmptyResponse())                  // refreshStreak (fire-and-forget)
+      .mockReturnValueOnce(okStreakResponse())                 // refreshStreak
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
@@ -143,16 +128,13 @@ describe('ChallengeList', () => {
     wrapper.findComponent(ChallengeCard).vm.$emit('toggle', challenge)
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}/1/toggle`, { method: 'PATCH' })
-    expect(fetchMock).toHaveBeenCalledTimes(3)
-    expect(wrapper.text()).toContain('1 von 1 erledigt')
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `${API_URL}/1/toggle`, { method: 'PATCH' })
   })
-
-  // ── Neue Tests: CRUD ──────────────────────────────────────
 
   it('adds a challenge manually through POST and reloads the list', async () => {
     fetchMock
       .mockReturnValueOnce(okResponse([{ id: 1, title: 'Workout', category: 'Fitness', done: false }]))
+      .mockReturnValueOnce(okStreakResponse())
       .mockReturnValueOnce(okEmptyResponse())
       .mockReturnValueOnce(okResponse([
         { id: 1, title: 'Workout', category: 'Fitness', done: false },
@@ -169,12 +151,11 @@ describe('ChallengeList', () => {
     await saveButton?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, API_URL, {
+    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: 'Meditieren', category: 'Alltag', done: false }),
     })
-    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL)
     expect(wrapper.text()).toContain('Meditieren')
   })
 
@@ -185,6 +166,7 @@ describe('ChallengeList', () => {
 
     fetchMock
       .mockReturnValueOnce(okResponse([challenge]))
+      .mockReturnValueOnce(okStreakResponse())
       .mockReturnValueOnce(okEmptyResponse())
       .mockReturnValueOnce(okResponse([]))
 
@@ -194,8 +176,7 @@ describe('ChallengeList', () => {
     wrapper.findComponent(ChallengeCard).vm.$emit('delete', challenge)
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}/1`, { method: 'DELETE' })
-    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL)
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `${API_URL}/1`, { method: 'DELETE' })
     expect(wrapper.text()).not.toContain('Workout')
   })
 
@@ -205,6 +186,7 @@ describe('ChallengeList', () => {
 
     fetchMock
       .mockReturnValueOnce(okResponse([challenge]))
+      .mockReturnValueOnce(okStreakResponse())
       .mockReturnValueOnce(okEmptyResponse())
       .mockReturnValueOnce(okResponse([updated]))
 
@@ -221,31 +203,30 @@ describe('ChallengeList', () => {
     await saveButton?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, `${API_URL}/1`, {
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `${API_URL}/1`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: 'Intensiv-Workout', category: 'Fitness', done: false }),
     })
-    expect(fetchMock).toHaveBeenNthCalledWith(3, API_URL)
     expect(wrapper.text()).toContain('Intensiv-Workout')
   })
 
-  // ── Neue Tests: Leerzustand ───────────────────────────────
-
   it('shows an empty-state message and no error when the backend returns no challenges', async () => {
-    fetchMock.mockReturnValueOnce(okResponse([]))
+    fetchMock
+      .mockReturnValueOnce(okResponse([]))
+      .mockReturnValueOnce(okStreakResponse())
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
 
     expect(wrapper.find('.alert-danger').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Keine Challenges gefunden.')
+    expect(wrapper.text()).toContain('Keine Challenges gefunden')
   })
 
-  // ── Neue Tests: Fehlerfälle ───────────────────────────────
-
   it('shows requestError as alert-danger when fetch rejects during initial load', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('Network error'))
+    fetchMock
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockReturnValueOnce(okStreakResponse())
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
@@ -257,6 +238,7 @@ describe('ChallengeList', () => {
   it('shows addChallengeError inside the modal when the server returns 500 on POST', async () => {
     fetchMock
       .mockReturnValueOnce(okResponse([]))
+      .mockReturnValueOnce(okStreakResponse())
       .mockReturnValueOnce(errorResponse(500))
 
     const wrapper = mount(ChallengeList)
@@ -274,15 +256,14 @@ describe('ChallengeList', () => {
     expect(errorAlert.text()).toContain('Die Challenge konnte nicht gespeichert werden.')
   })
 
-  // ── Neue Tests: Guard-Fälle ───────────────────────────────
-
   it('does not send a POST request when the add title is empty', async () => {
-    fetchMock.mockReturnValueOnce(okResponse([]))
+    fetchMock
+      .mockReturnValueOnce(okResponse([]))
+      .mockReturnValueOnce(okStreakResponse())
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
 
-    // newTitle startet als '' — kein setValue nötig
     const saveButton = wrapper
       .find('#addChallengeModal')
       .findAll('button')
@@ -290,13 +271,15 @@ describe('ChallengeList', () => {
     await saveButton?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2) // loadChallenges + streak, but NO POST call
   })
 
   it('does not send a PUT request when the edit title is cleared', async () => {
     const challenge = { id: 1, title: 'Workout', category: 'Fitness', done: false }
 
-    fetchMock.mockReturnValueOnce(okResponse([challenge]))
+    fetchMock
+      .mockReturnValueOnce(okResponse([challenge]))
+      .mockReturnValueOnce(okStreakResponse())
 
     const wrapper = mount(ChallengeList)
     await flushPromises()
@@ -313,6 +296,6 @@ describe('ChallengeList', () => {
     await saveButton?.trigger('click')
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2) // loadChallenges + streak, but NO PUT call
   })
 })

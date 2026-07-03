@@ -10,7 +10,7 @@ describe('ChallengeCard', () => {
   it('emits toggle with the challenge when the check button is clicked', async () => {
     const wrapper = mount(ChallengeCard, { props: { challenge: openChallenge } })
 
-    await wrapper.find('.btn-outline-success').trigger('click')
+    await wrapper.find('.action-btn.complete').trigger('click')
 
     expect(wrapper.emitted('toggle')?.[0]).toEqual([openChallenge])
   })
@@ -18,7 +18,7 @@ describe('ChallengeCard', () => {
   it('emits delete with the challenge when the trash button is clicked', async () => {
     const wrapper = mount(ChallengeCard, { props: { challenge: openChallenge } })
 
-    await wrapper.find('.btn-outline-danger').trigger('click')
+    await wrapper.find('.action-btn.delete').trigger('click')
 
     expect(wrapper.emitted('delete')?.[0]).toEqual([openChallenge])
   })
@@ -26,22 +26,22 @@ describe('ChallengeCard', () => {
   it('emits edit with the challenge when the pencil button is clicked', async () => {
     const wrapper = mount(ChallengeCard, { props: { challenge: openChallenge } })
 
-    await wrapper.find('.btn-outline-primary').trigger('click')
+    await wrapper.find('.action-btn.edit').trigger('click')
 
     expect(wrapper.emitted('edit')?.[0]).toEqual([openChallenge])
   })
 
-  it('renders strikethrough title and muted card styling for a done challenge', () => {
+  it('renders strikethrough title and is-done styling for a done challenge', () => {
     const wrapper = mount(ChallengeCard, { props: { challenge: doneChallenge } })
 
     expect(wrapper.find('.text-decoration-line-through').exists()).toBe(true)
-    expect(wrapper.find('.card').classes()).toContain('opacity-75')
+    expect(wrapper.find('.challenge-row').classes()).toContain('is-done')
   })
 
   it('shows the undo icon and "Wieder offen" title for a done challenge toggle button', () => {
     const wrapper = mount(ChallengeCard, { props: { challenge: doneChallenge } })
 
-    const toggleButton = wrapper.find('.btn-outline-success')
+    const toggleButton = wrapper.find('.action-btn.complete')
     expect(toggleButton.attributes('title')).toBe('Wieder offen')
     expect(toggleButton.find('i').classes()).toContain('bi-arrow-counterclockwise')
   })

@@ -7,7 +7,7 @@ import { useStreak } from '../composables/useStreak'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com').replace(/\/$/, '')
 const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
-const { refreshStreak } = useStreak()
+const { streak, refreshStreak } = useStreak()
 const selectedCategory = ref('Alle')
 
 const buildChallengesUrl = (category = selectedCategory.value) => {
@@ -22,14 +22,9 @@ const isLoadingChallenges = ref(false)
 const loadChallenges = async (category = selectedCategory.value) => {
   requestError.value = ''
   isLoadingChallenges.value = true
-
   try {
     const response = await fetch(buildChallengesUrl(category))
-
-    if (!response.ok) {
-      throw new Error('Challenges konnten nicht geladen werden.')
-    }
-
+    if (!response.ok) throw new Error('Challenges konnten nicht geladen werden.')
     challenges.value = await response.json()
   } catch {
     requestError.value = 'Die Challenges konnten nicht geladen werden. Bitte versuche es erneut.'
@@ -38,7 +33,10 @@ const loadChallenges = async (category = selectedCategory.value) => {
   }
 }
 
-onMounted(loadChallenges)
+onMounted(() => {
+  loadChallenges()
+  refreshStreak()
+})
 
 const generatedChallenge = ref<ChallengeSuggestion | null>(null)
 const suggestionSuccess = ref('')
@@ -50,56 +48,45 @@ const selectCategory = async (category: string) => {
   await loadChallenges(category)
 }
 
+const completedCount = computed(() => challenges.value.filter(c => c.done).length)
+const totalCount = computed(() => challenges.value.length)
 const progress = computed(() => {
-  const total = challenges.value.length
-  if (total === 0) return 0
-  return Math.round((challenges.value.filter(c => c.done).length / total) * 100)
+  if (totalCount.value === 0) return 0
+  return Math.round((completedCount.value / totalCount.value) * 100)
 })
 
 const toggleDone = async (challenge: Challenge) => {
   requestError.value = ''
-
-  // Optimistic update via the reactive state entry (not the emitted reference)
   const local = challenges.value.find(c => c.id === challenge.id)
   if (local) local.done = !local.done
 
   try {
-    const response = await fetch(`${CHALLENGES_API_URL}/${challenge.id}/toggle`, {
-      method: 'PATCH',
-    })
-
+    const response = await fetch(`${CHALLENGES_API_URL}/${challenge.id}/toggle`, { method: 'PATCH' })
     if (!response.ok) {
       if (local) local.done = !local.done
       throw new Error('Challenge konnte nicht aktualisiert werden.')
     }
-
     void refreshStreak()
   } catch {
-    requestError.value = 'Die Challenge konnte nicht aktualisiert werden. Bitte versuche es erneut.'
+    requestError.value = 'Die Challenge konnte nicht aktualisiert werden.'
   }
 }
 
-// ── Random Challenge ──────────────────────────────────────
 const pickRandom = async () => {
   requestError.value = ''
   suggestionSuccess.value = ''
   try {
     isLoadingSuggestion.value = true
     const response = await fetch(`${CHALLENGES_API_URL}/suggestions/random`)
-
-    if (!response.ok) {
-      throw new Error('Zufällige Challenge konnte nicht geladen werden.')
-    }
-
+    if (!response.ok) throw new Error('Zufällige Challenge konnte nicht geladen werden.')
     generatedChallenge.value = await response.json()
   } catch {
-    requestError.value = 'Die zufällige Challenge konnte nicht geladen werden. Bitte versuche es erneut.'
+    requestError.value = 'Die zufällige Challenge konnte nicht geladen werden.'
   } finally {
     isLoadingSuggestion.value = false
   }
 }
 
-// Neue Challenge hinzufügen aus KI-Vorschlag
 const acceptGeneratedChallenge = async () => {
   requestError.value = ''
   suggestionSuccess.value = ''
@@ -109,28 +96,35 @@ const acceptGeneratedChallenge = async () => {
     isSavingSuggestion.value = true
     const response = await fetch(CHALLENGES_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(generatedChallenge.value),
     })
-
-    if (!response.ok) {
-      throw new Error('Challenge konnte nicht gespeichert werden.')
-    }
+    if (!response.ok) throw new Error('Challenge konnte nicht gespeichert werden.')
 
     await loadChallenges()
     generatedChallenge.value = null
     suggestionSuccess.value = 'Challenge wurde übernommen.'
   } catch {
-    requestError.value = 'Die Challenge konnte nicht übernommen werden. Bitte versuche es erneut.'
+    requestError.value = 'Die Challenge konnte nicht übernommen werden.'
   } finally {
     isSavingSuggestion.value = false
   }
 }
 
-// ── NEUE CHALLENGE (ADD) ──────────────────────────────────
-const newTitle    = ref('')
+const deleteChallenge = async (challenge: Challenge) => {
+  if (!confirm(`Möchtest du die Aufgabe "${challenge.title}" wirklich löschen?`)) return;
+  requestError.value = ''
+  try {
+    const response = await fetch(`${CHALLENGES_API_URL}/${challenge.id}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error('Challenge konnte nicht gelöscht werden.')
+    await loadChallenges()
+  } catch {
+    requestError.value = 'Die Challenge konnte nicht gelöscht werden.'
+  }
+}
+
+// -- Logik für "Neue Challenge" Modal --
+const newTitle = ref('')
 const newCategory = ref('Alltag')
 const addChallengeError = ref('')
 const isSavingChallenge = ref(false)
@@ -154,9 +148,7 @@ const addChallenge = async () => {
       }),
     })
 
-    if (!response.ok) {
-      throw new Error('Challenge konnte nicht gespeichert werden.')
-    }
+    if (!response.ok) throw new Error('Challenge konnte nicht gespeichert werden.')
 
     await loadChallenges()
     newTitle.value = ''
@@ -169,37 +161,13 @@ const addChallenge = async () => {
   }
 }
 
-// ── CHALLENGE LÖSCHEN (DELETE) ────────────────────────────
-const deleteChallenge = async (challenge: Challenge) => {
-  if (!confirm(`Möchtest du die Aufgabe "${challenge.title}" wirklich löschen?`)) return;
-
-  requestError.value = ''
-  try {
-    const response = await fetch(`${CHALLENGES_API_URL}/${challenge.id}`, {
-      method: 'DELETE',
-    })
-
-    if (!response.ok) {
-      throw new Error('Challenge konnte nicht gelöscht werden.')
-    }
-
-    await loadChallenges()
-  } catch {
-    requestError.value = 'Die Challenge konnte nicht gelöscht werden. Bitte versuche es erneut.'
-  }
-}
-
-// ── CHALLENGE BEARBEITEN (EDIT) ───────────────────────────
+// -- Logik für "Bearbeiten" Modal --
 const editingChallengeId = ref<number | null>(null)
 const editTitle = ref('')
 const editCategory = ref('Alltag')
 const editChallengeError = ref('')
 const isSavingEdit = ref(false)
 const closeEditModalButton = ref<HTMLButtonElement | null>(null)
-
-const greetingHour = new Date().getHours()
-const greeting =
-  greetingHour < 12 ? 'Guten Morgen!' : greetingHour < 18 ? 'Guten Tag!' : 'Guten Abend!'
 
 const openEditModal = (challenge: Challenge) => {
   editingChallengeId.value = challenge.id
@@ -226,9 +194,7 @@ const saveEditChallenge = async () => {
       }),
     })
 
-    if (!response.ok) {
-      throw new Error('Challenge konnte nicht aktualisiert werden.')
-    }
+    if (!response.ok) throw new Error('Challenge konnte nicht aktualisiert werden.')
 
     await loadChallenges()
     closeEditModalButton.value?.click()
@@ -241,221 +207,216 @@ const saveEditChallenge = async () => {
 </script>
 
 <template>
-  <div class="container pb-5">
-    <div class="row justify-content-center">
-      <div class="col-md-8 col-lg-6">
+  <div class="dashboard-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="fw-bold mb-1">
+          <i class="bi bi-stars text-primary me-2"></i>Deine täglichen Challenges
+        </h2>
+        <p class="text-muted mb-0">Bleib dran und erreiche deine Ziele!</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary rounded-pill px-4 fw-medium shadow-sm" data-bs-toggle="modal" data-bs-target="#addChallengeModal">
+          <i class="bi bi-plus-lg me-1"></i> Neue Challenge
+        </button>
+        <button class="btn btn-white rounded-pill px-4 fw-medium border shadow-sm" @click="pickRandom" :disabled="isLoadingSuggestion">
+          <i class="bi bi-dice-5 me-1"></i> {{ isLoadingSuggestion ? 'Generiere...' : 'Zufällige Challenge' }}
+        </button>
+      </div>
+    </div>
 
-        <div class="text-center mb-4">
-          <h2 class="fw-bold">{{ greeting }} 👋</h2>
-          <p class="text-muted">Dein Fortschritt heute:</p>
-          <div class="progress" style="height: 25px; border-radius: 15px;">
-            <div
-              class="progress-bar bg-success progress-bar-striped progress-bar-animated fw-bold"
-              role="progressbar"
-              :style="{ width: progress + '%' }"
-              :aria-valuenow="progress"
-              aria-valuemin="0"
-              aria-valuemax="100"
-            >
-              {{ progress }}%
-            </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="stat-card streak-card">
+          <div class="icon-box bg-success-subtle text-success">
+            <i class="bi bi-fire fs-4"></i>
           </div>
-          <p class="text-muted small mt-2">
-            {{ challenges.filter(c => c.done).length }} von {{ challenges.length }} erledigt
-          </p>
+          <div>
+            <div class="text-muted small fw-medium">Aktuelle Streak</div>
+            <div class="fs-4 fw-bold text-success">{{ streak }} Tage</div>
+            <div class="small text-muted">Weiter so! 🔥</div>
+          </div>
         </div>
+      </div>
 
-        <div class="d-flex gap-2 mb-3">
-          <button
-            class="btn btn-primary fw-bold shadow-sm flex-grow-1"
-            data-bs-toggle="modal"
-            data-bs-target="#addChallengeModal"
-          >
-            <i class="bi bi-plus-circle me-2"></i>Neue Challenge
-          </button>
-
-          <button
-            class="btn btn-warning fw-bold shadow-sm flex-grow-1"
-            @click="pickRandom"
-            :disabled="isLoadingSuggestion"
-          >
-            <i class="bi bi-shuffle me-2"></i>{{ isLoadingSuggestion ? 'Generiere...' : 'Zufällige Challenge' }}
-          </button>
-        </div>
-
-        <div v-if="requestError" class="alert alert-danger rounded-3">
-          {{ requestError }}
-        </div>
-
-        <div v-if="suggestionSuccess" class="alert alert-success rounded-3">
-          {{ suggestionSuccess }}
-        </div>
-
-        <div v-if="generatedChallenge" class="alert border-0 rounded-4 shadow-sm mb-3 d-flex align-items-center gap-3"
-             style="background: linear-gradient(135deg, #fff3cd, #ffe69c);">
-          <span style="font-size: 2rem;">🎯</span>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="icon-box bg-primary-subtle text-primary">
+            <i class="bi bi-graph-up-arrow fs-4"></i>
+          </div>
           <div class="flex-grow-1">
-            <div class="fw-bold">Generierter Challenge-Vorschlag:</div>
-            <div class="fs-5 fw-bold text-dark">{{ generatedChallenge.title }}</div>
-            <span class="badge bg-secondary rounded-pill">{{ generatedChallenge.category }}</span>
-          </div>
-          <div class="d-flex gap-2">
-            <button
-              class="btn btn-success fw-bold"
-              :disabled="isSavingSuggestion"
-              @click="acceptGeneratedChallenge"
-            >
-              {{ isSavingSuggestion ? 'Speichern...' : 'Challenge übernehmen' }}
-            </button>
-            <button
-              class="btn-close"
-              @click="generatedChallenge = null"
-              aria-label="Vorschlag schließen"
-            ></button>
+            <div class="text-muted small fw-medium">Dein Fortschritt</div>
+            <div class="fs-4 fw-bold text-primary">{{ progress }}%</div>
+            <div class="progress mt-2" style="height: 6px;">
+              <div class="progress-bar bg-primary" :style="{ width: progress + '%' }"></div>
+            </div>
           </div>
         </div>
-
-        <div
-          v-if="challenges.filter(c => !c.done).length === 0 && challenges.length > 0"
-          class="alert alert-success rounded-4 text-center fw-semibold mb-3"
-        >
-          🎉 Alle Challenges erledigt — fantastisch!
-        </div>
-
-        <CategoryFilter :selected="selectedCategory" @update:selected="selectCategory" />
-
-        <div v-if="isLoadingChallenges && challenges.length === 0" class="text-center py-5">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Wird geladen…</span>
-          </div>
-        </div>
-
-        <div v-else-if="!isLoadingChallenges && challenges.length === 0" class="text-center py-5 text-muted">
-          <i class="bi bi-emoji-neutral display-4"></i>
-          <p class="mt-2">Keine Challenges gefunden.</p>
-        </div>
-
-        <div v-else class="d-flex flex-column gap-3">
-          <div
-            v-for="challenge in challenges"
-            :key="challenge.id"
-          >
-            <ChallengeCard
-              :challenge="challenge"
-              @toggle="toggleDone"
-              @delete="deleteChallenge"
-              @edit="openEditModal"
-            />
-          </div>
-        </div>
-
       </div>
-    </div>
 
-    <div class="modal fade" id="addChallengeModal" tabindex="-1" aria-hidden="true" aria-labelledby="addChallengeModalLabel">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow">
-
-          <div class="modal-header border-bottom-0">
-            <h5 class="modal-title fw-bold" id="addChallengeModalLabel">
-              <i class="bi bi-plus-circle me-2 text-primary"></i>Neue Aufgabe
-            </h5>
-            <button ref="closeAddModalButton" type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="icon-box bg-purple-subtle text-purple">
+            <i class="bi bi-star fs-4"></i>
           </div>
-
-          <div class="modal-body">
-            <div v-if="addChallengeError" class="alert alert-danger rounded-3">
-              {{ addChallengeError }}
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Titel</label>
-              <input
-                v-model="newTitle"
-                type="text"
-                class="form-control rounded-3"
-                placeholder="z.B. 20 Liegestütze"
-                @keyup.enter="addChallenge"
-              />
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Kategorie</label>
-              <select v-model="newCategory" class="form-select rounded-3">
-                <option>Fitness</option>
-                <option>Lernen</option>
-                <option>Gesundheit</option>
-                <option>Alltag</option>
-                <option>Sozial</option>
-              </select>
-            </div>
+          <div>
+            <div class="text-muted small fw-medium">Erledigte Challenges</div>
+            <div class="fs-4 fw-bold text-purple">{{ completedCount }} / {{ totalCount }}</div>
+            <div class="small text-muted">Diese Woche</div>
           </div>
-
-          <div class="modal-footer border-top-0">
-            <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Abbrechen</button>
-            <button
-              class="btn btn-primary rounded-3 px-4"
-              :disabled="isSavingChallenge"
-              @click="addChallenge"
-            >
-              {{ isSavingChallenge ? 'Speichern...' : 'Speichern' }}
-            </button>
-          </div>
-
         </div>
       </div>
     </div>
 
-    <div class="modal fade" id="editChallengeModal" tabindex="-1" aria-hidden="true" aria-labelledby="editChallengeModalLabel">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow">
-
-          <div class="modal-header border-bottom-0">
-            <h5 class="modal-title fw-bold" id="editChallengeModalLabel">
-              <i class="bi bi-pencil me-2 text-primary"></i>Aufgabe bearbeiten
-            </h5>
-            <button ref="closeEditModalButton" type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-
-          <div class="modal-body">
-            <div v-if="editChallengeError" class="alert alert-danger rounded-3">
-              {{ editChallengeError }}
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Titel</label>
-              <input
-                v-model="editTitle"
-                type="text"
-                class="form-control rounded-3"
-                @keyup.enter="saveEditChallenge"
-              />
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Kategorie</label>
-              <select v-model="editCategory" class="form-select rounded-3">
-                <option>Fitness</option>
-                <option>Lernen</option>
-                <option>Gesundheit</option>
-                <option>Alltag</option>
-                <option>Sozial</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="modal-footer border-top-0">
-            <button class="btn btn-light rounded-3" data-bs-dismiss="modal">Abbrechen</button>
-            <button
-              class="btn btn-primary rounded-3 px-4"
-              :disabled="isSavingEdit"
-              @click="saveEditChallenge"
-            >
-              {{ isSavingEdit ? 'Speichern...' : 'Änderungen speichern' }}
-            </button>
-          </div>
-
-        </div>
+    <div v-if="requestError" class="alert alert-danger rounded-4">{{ requestError }}</div>
+    <div v-if="suggestionSuccess" class="alert alert-success rounded-4">{{ suggestionSuccess }}</div>
+    <div v-if="generatedChallenge" class="alert alert-warning rounded-4 d-flex align-items-center justify-content-between">
+      <span><strong>{{ generatedChallenge.title }}</strong> ({{ generatedChallenge.category }})</span>
+      <div>
+        <button class="btn btn-success btn-sm rounded-pill px-3" @click="acceptGeneratedChallenge">Übernehmen</button>
+        <button class="btn-close ms-3" @click="generatedChallenge = null"></button>
       </div>
     </div>
 
+    <CategoryFilter :selected="selectedCategory" @update:selected="selectCategory" />
+
+    <div class="challenges-container mt-2">
+      <div v-if="isLoadingChallenges && challenges.length === 0" class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+      </div>
+
+      <div v-else-if="!isLoadingChallenges && challenges.length === 0" class="text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+        <h5>Keine Challenges gefunden</h5>
+        <p>Leg eine neue an oder generiere einen Vorschlag.</p>
+      </div>
+
+      <div v-else class="list-wrapper">
+        <ChallengeCard
+          v-for="challenge in challenges"
+          :key="challenge.id"
+          :challenge="challenge"
+          @toggle="toggleDone"
+          @delete="deleteChallenge"
+          @edit="openEditModal"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="addChallengeModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-header border-bottom-0">
+          <h5 class="modal-title fw-bold">Neue Challenge</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" ref="closeAddModalButton"></button>
+        </div>
+        <div class="modal-body pt-0">
+          <div v-if="addChallengeError" class="alert alert-danger">{{ addChallengeError }}</div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-medium">Titel</label>
+            <input v-model="newTitle" type="text" class="form-control" placeholder="z. B. 10.000 Schritte gehen" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-medium">Kategorie</label>
+            <select v-model="newCategory" class="form-select">
+              <option>Fitness</option>
+              <option>Lernen</option>
+              <option>Gesundheit</option>
+              <option>Alltag</option>
+              <option>Sozial</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0">
+          <button class="btn btn-primary rounded-pill w-100" @click="addChallenge" :disabled="isSavingChallenge">
+            Speichern
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editChallengeModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-header border-bottom-0">
+          <h5 class="modal-title fw-bold">Challenge bearbeiten</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" ref="closeEditModalButton"></button>
+        </div>
+        <div class="modal-body pt-0">
+          <div v-if="editChallengeError" class="alert alert-danger">{{ editChallengeError }}</div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-medium">Titel</label>
+            <input v-model="editTitle" type="text" class="form-control" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-medium">Kategorie</label>
+            <select v-model="editCategory" class="form-select">
+              <option>Fitness</option>
+              <option>Lernen</option>
+              <option>Gesundheit</option>
+              <option>Alltag</option>
+              <option>Sozial</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0">
+          <button class="btn btn-primary rounded-pill w-100" @click="saveEditChallenge" :disabled="isSavingEdit">
+            Änderungen speichern
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.btn-white {
+  background-color: #fff;
+  color: #374151;
+}
+.btn-white:hover {
+  background-color: #f9fafb;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #f3f4f6;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  height: 100%;
+}
+
+.streak-card {
+  background: #f8faf9;
+  border-color: #e6f4ea;
+}
+
+.icon-box {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-purple-subtle { background-color: #f3e8ff; }
+.text-purple { color: #9333ea; }
+
+.challenges-container {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #f3f4f6;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+
+.list-wrapper > :deep(div):not(:last-child) {
+  border-bottom: 1px solid #f3f4f6;
+}
+</style>
