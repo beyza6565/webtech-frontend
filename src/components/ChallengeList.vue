@@ -5,6 +5,13 @@ import CategoryFilter from './CategoryFilter.vue'
 import type { Challenge, ChallengeSuggestion } from '../types/challenge'
 import { useStreak } from '../composables/useStreak'
 
+// Dark Mode Logik
+const darkMode = ref(false)
+const toggleDarkMode = () => {
+  darkMode.value = !darkMode.value
+  document.body.classList.toggle('dark', darkMode.value)
+}
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com').replace(/\/$/, '')
 const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
 const { streak, refreshStreak } = useStreak()
@@ -123,7 +130,6 @@ const deleteChallenge = async (challenge: Challenge) => {
   }
 }
 
-// -- Logik für "Neue Challenge" Modal --
 const newTitle = ref('')
 const newCategory = ref('Alltag')
 const addChallengeError = ref('')
@@ -161,7 +167,6 @@ const addChallenge = async () => {
   }
 }
 
-// -- Logik für "Bearbeiten" Modal --
 const editingChallengeId = ref<number | null>(null)
 const editTitle = ref('')
 const editCategory = ref('Alltag')
@@ -222,6 +227,15 @@ const saveEditChallenge = async () => {
         <button class="btn btn-white rounded-pill px-4 fw-medium border shadow-sm" @click="pickRandom" :disabled="isLoadingSuggestion">
           <i class="bi bi-dice-5 me-1"></i> {{ isLoadingSuggestion ? 'Generiere...' : 'Zufällige Challenge' }}
         </button>
+
+        <button
+          class="btn btn-white rounded-circle border shadow-sm d-flex align-items-center justify-content-center"
+          @click="toggleDarkMode"
+          style="width: 42px; height: 42px;"
+          title="Dark Mode umschalten"
+        >
+          <i class="bi fs-5" :class="darkMode ? 'bi-sun-fill text-warning' : 'bi-moon-stars-fill text-secondary'"></i>
+        </button>
       </div>
     </div>
 
@@ -270,11 +284,13 @@ const saveEditChallenge = async () => {
 
     <div v-if="requestError" class="alert alert-danger rounded-4">{{ requestError }}</div>
     <div v-if="suggestionSuccess" class="alert alert-success rounded-4">{{ suggestionSuccess }}</div>
-    <div v-if="generatedChallenge" class="alert alert-warning rounded-4 d-flex align-items-center justify-content-between">
-      <span><strong>{{ generatedChallenge.title }}</strong> ({{ generatedChallenge.category }})</span>
-      <div>
+    <div v-if="generatedChallenge" class="alert alert-warning rounded-4 d-flex align-items-center gap-3">
+      <div class="flex-grow-1">
+        <strong>{{ generatedChallenge.title }}</strong> ({{ generatedChallenge.category }})
+      </div>
+      <div class="d-flex align-items-center gap-3 flex-shrink-0">
         <button class="btn btn-success btn-sm rounded-pill px-3" @click="acceptGeneratedChallenge">Übernehmen</button>
-        <button class="btn-close ms-3" @click="generatedChallenge = null"></button>
+        <button class="btn-close m-0" @click="generatedChallenge = null"></button>
       </div>
     </div>
 

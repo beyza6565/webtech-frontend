@@ -5,20 +5,9 @@ import ChallengeList from '../components/ChallengeList.vue'
 <template>
   <div class="page">
     <div class="container">
-
-      <!-- HERO -->
-      <div class="hero">
-        <h1>Deine täglichen Challenges</h1>
-        <p>Bleib dran und erreiche deine Ziele!</p>
-      </div>
-
-      <!-- CONTENT CARD WRAPPER -->
       <div class="panel">
-
         <ChallengeList />
-
       </div>
-
     </div>
   </div>
 </template>
@@ -26,24 +15,13 @@ import ChallengeList from '../components/ChallengeList.vue'
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #f6f7fb;
+  background: transparent; /* Geändert, damit App.vue den Hintergrund steuert */
   padding: 30px;
 }
 
 .container {
   max-width: 1100px;
   margin: 0 auto;
-}
-
-.hero h1 {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.hero p {
-  color: #6b7280;
-  margin-bottom: 20px;
 }
 
 .panel {

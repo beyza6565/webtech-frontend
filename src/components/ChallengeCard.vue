@@ -9,7 +9,7 @@ defineEmits<{
   (e: 'edit', challenge: Challenge): void
 }>()
 
-// Ordnet jeder Kategorie die passenden Farben & Icons zu (wie im Bild)
+// Ordnet jeder Kategorie die passenden Farben & Icons zu
 const catStyles = computed(() => {
   switch (props.challenge.category) {
     case 'Fitness': return { icon: 'bi-bicycle', color: 'text-primary', bg: 'bg-primary-subtle', badge: 'text-primary' }
@@ -25,11 +25,6 @@ const catStyles = computed(() => {
 <template>
   <div class="challenge-row" :class="{ 'is-done': challenge.done }">
     <div class="left-section">
-
-      <button class="checkbox-btn" :class="{ checked: challenge.done }" @click="$emit('toggle', challenge)">
-        <i v-if="challenge.done" class="bi bi-check text-white fw-bold"></i>
-      </button>
-
       <div class="icon-circle" :class="catStyles.bg">
         <i class="bi fs-5" :class="[catStyles.icon, catStyles.color]"></i>
       </div>
@@ -45,19 +40,31 @@ const catStyles = computed(() => {
     </div>
 
     <div class="right-section">
-
       <span class="category-badge" :class="[catStyles.bg, catStyles.badge]">
         {{ challenge.category }}
       </span>
 
       <div class="actions ms-3">
-        <button class="action-btn edit" @click="$emit('edit', challenge)" title="Bearbeiten">
+        <button
+          class="action-btn edit"
+          data-bs-toggle="modal"
+          data-bs-target="#editChallengeModal"
+          @click="$emit('edit', challenge)"
+          title="Bearbeiten"
+        >
           <i class="bi bi-pencil"></i>
         </button>
+
         <button class="action-btn delete" @click="$emit('delete', challenge)" title="Löschen">
           <i class="bi bi-trash"></i>
         </button>
-        <button class="action-btn complete" :class="{ 'is-active': challenge.done }" @click="$emit('toggle', challenge)" :title="challenge.done ? 'Wieder offen' : 'Erledigen'">
+
+        <button
+          class="action-btn complete"
+          :class="{ 'is-active': challenge.done }"
+          @click="$emit('toggle', challenge)"
+          :title="challenge.done ? 'Wieder offen' : 'Erledigen'"
+        >
           <i class="bi" :class="challenge.done ? 'bi-arrow-counterclockwise' : 'bi-check-lg'"></i>
         </button>
       </div>
@@ -83,24 +90,6 @@ const catStyles = computed(() => {
   gap: 16px;
 }
 
-.checkbox-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 2px solid #e5e7eb;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  transition: 0.2s;
-}
-.checkbox-btn.checked {
-  background: #22c55e;
-  border-color: #22c55e;
-}
-
 .icon-circle {
   width: 48px;
   height: 48px;
@@ -124,6 +113,7 @@ const catStyles = computed(() => {
 }
 
 .actions { display: flex; gap: 8px; }
+
 .action-btn {
   width: 36px;
   height: 36px;
@@ -137,6 +127,7 @@ const catStyles = computed(() => {
   cursor: pointer;
   transition: 0.2s;
 }
+
 .action-btn:hover { background: #f3f4f6; color: #111; }
 .action-btn.delete:hover { color: #ef4444; border-color: #ef4444; }
 .action-btn.edit:hover { color: #3b82f6; border-color: #3b82f6; }

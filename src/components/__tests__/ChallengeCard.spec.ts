@@ -7,7 +7,7 @@ const openChallenge: Challenge = { id: 1, title: 'Workout', category: 'Fitness',
 const doneChallenge: Challenge = { id: 2, title: 'Lesen', category: 'Lernen', done: true }
 
 describe('ChallengeCard', () => {
-  it('emits toggle with the challenge when the check button is clicked', async () => {
+  it('emits toggle with the challenge when the complete button is clicked', async () => {
     const wrapper = mount(ChallengeCard, { props: { challenge: openChallenge } })
 
     await wrapper.find('.action-btn.complete').trigger('click')
