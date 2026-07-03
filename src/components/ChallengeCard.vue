@@ -26,8 +26,7 @@ defineEmits<{
       </div>
 
       <div class="flex-grow-1 min-width-0">
-        <h5
-          class="card-title mb-1 fw-bold text-truncate"
+        <h5 class="card-title mb-1 fw-bold challenge-title"
           :class="{ 'text-decoration-line-through text-muted': challenge.done }"
         >
           {{ challenge.title }}
@@ -35,7 +34,7 @@ defineEmits<{
         <span class="badge bg-secondary rounded-pill">{{ challenge.category }}</span>
       </div>
 
-      <div class="d-flex align-items-center gap-1 ms-2">
+      <div class="d-flex align-items-center gap-1 ms-2 flex-shrink-0">
         <button
           class="btn btn-sm btn-outline-primary border-0"
           data-bs-toggle="modal"
@@ -71,6 +70,12 @@ defineEmits<{
 </template>
 
 <style scoped>
+.challenge-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .min-width-0 {
   min-width: 0;
 }
