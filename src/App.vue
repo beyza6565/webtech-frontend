@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark')
+  }
+})
 </script>
 
 <template>
