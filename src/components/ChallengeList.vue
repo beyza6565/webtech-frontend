@@ -5,13 +5,20 @@ import CategoryFilter from './CategoryFilter.vue'
 import type { Challenge, ChallengeSuggestion } from '../types/challenge'
 import { useStreak } from '../composables/useStreak'
 
-// Dark Mode Logik
-const darkMode = ref(false)
+// --- 1. Dark Mode dauerhaft speichern (Local Storage) ---
+const darkMode = ref(localStorage.getItem('theme') === 'dark')
+
+if (darkMode.value) {
+  document.body.classList.add('dark')
+}
+
 const toggleDarkMode = () => {
   darkMode.value = !darkMode.value
   document.body.classList.toggle('dark', darkMode.value)
+  localStorage.setItem('theme', darkMode.value ? 'dark' : 'light')
 }
 
+// --- API und Basislogik (Unverändert) ---
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://dailyhabit.onrender.com').replace(/\/$/, '')
 const CHALLENGES_API_URL = `${API_BASE_URL}/api/v1/challenges`
 const { streak, refreshStreak } = useStreak()
@@ -296,7 +303,7 @@ const saveEditChallenge = async () => {
 
     <CategoryFilter :selected="selectedCategory" @update:selected="selectCategory" />
 
-    <div class="challenges-container mt-2">
+    <div class="challenges-container mt-2 position-relative">
       <div v-if="isLoadingChallenges && challenges.length === 0" class="text-center py-5">
         <div class="spinner-border text-primary"></div>
       </div>
@@ -307,7 +314,7 @@ const saveEditChallenge = async () => {
         <p>Leg eine neue an oder generiere einen Vorschlag.</p>
       </div>
 
-      <div v-else class="list-wrapper">
+      <TransitionGroup name="list" tag="div" class="list-wrapper" v-else>
         <ChallengeCard
           v-for="challenge in challenges"
           :key="challenge.id"
@@ -316,7 +323,7 @@ const saveEditChallenge = async () => {
           @delete="deleteChallenge"
           @edit="openEditModal"
         />
-      </div>
+      </TransitionGroup>
     </div>
   </div>
 
@@ -331,7 +338,7 @@ const saveEditChallenge = async () => {
           <div v-if="addChallengeError" class="alert alert-danger">{{ addChallengeError }}</div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-medium">Titel</label>
-            <input v-model="newTitle" type="text" class="form-control" placeholder="z. B. 10.000 Schritte gehen" />
+            <input v-model="newTitle" @keyup.enter="addChallenge" type="text" class="form-control" placeholder="z. B. 10.000 Schritte gehen" />
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-medium">Kategorie</label>
@@ -364,7 +371,7 @@ const saveEditChallenge = async () => {
           <div v-if="editChallengeError" class="alert alert-danger">{{ editChallengeError }}</div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-medium">Titel</label>
-            <input v-model="editTitle" type="text" class="form-control" />
+            <input v-model="editTitle" @keyup.enter="saveEditChallenge" type="text" class="form-control" />
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-medium">Kategorie</label>
@@ -434,5 +441,19 @@ const saveEditChallenge = async () => {
 
 .list-wrapper > :deep(div):not(:last-child) {
   border-bottom: 1px solid #f3f4f6;
+}
+
+/* --- Animationen für die Liste --- */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+.list-leave-active {
+  position: absolute;
 }
 </style>
