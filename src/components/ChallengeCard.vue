@@ -12,71 +12,167 @@ defineEmits<{
 
 <template>
   <div
-    class="card shadow-sm border-0 rounded-4"
-    :class="{ 'opacity-75 bg-light': challenge.done }"
+    class="challenge-card"
+    :class="{ 'is-done': challenge.done }"
   >
-    <div class="card-body d-flex align-items-start p-3">
-
-      <div
-        class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-        style="width: 50px; height: 50px;"
-        :class="challenge.done ? 'bg-success text-white' : 'bg-primary text-white bg-opacity-75'"
-      >
-        <i class="bi bi-star fs-4"></i>
+    <div class="left">
+      <div class="icon">
+        <i class="bi bi-star"></i>
       </div>
 
-      <div class="flex-grow-1 min-width-0">
-        <h5 class="card-title mb-1 fw-bold challenge-title"
-          :class="{ 'text-decoration-line-through text-muted': challenge.done }"
-        >
+      <div class="content">
+        <div class="title" :class="{ done: challenge.done }">
           {{ challenge.title }}
-        </h5>
-        <span class="badge bg-secondary rounded-pill">{{ challenge.category }}</span>
+        </div>
+
+        <div class="meta">
+          <span class="badge">{{ challenge.category }}</span>
+        </div>
       </div>
+    </div>
 
-      <div class="d-flex align-items-center gap-1 ms-2 flex-shrink-0">
-        <button
-          class="btn btn-sm btn-outline-primary border-0"
-          data-bs-toggle="modal"
-          data-bs-target="#editChallengeModal"
-          @click="$emit('edit', challenge)"
-          title="Bearbeiten"
-          aria-label="Bearbeiten"
-        >
-          <i class="bi bi-pencil-fill"></i>
-        </button>
+    <div class="actions">
+      <button
+        class="icon-btn edit"
+        data-bs-toggle="modal"
+        data-bs-target="#editChallengeModal"
+        @click="$emit('edit', challenge)"
+        title="Bearbeiten"
+      >
+        <i class="bi bi-pencil-fill"></i>
+      </button>
 
-        <button
-          class="btn btn-sm btn-outline-danger border-0"
-          @click="$emit('delete', challenge)"
-          title="Löschen"
-          aria-label="Löschen"
-        >
-          <i class="bi bi-trash-fill"></i>
-        </button>
+      <button
+        class="icon-btn delete"
+        @click="$emit('delete', challenge)"
+        title="Löschen"
+      >
+        <i class="bi bi-trash-fill"></i>
+      </button>
 
-        <button
-          class="btn btn-sm btn-outline-success border-0"
-          @click="$emit('toggle', challenge)"
-          :title="challenge.done ? 'Wieder offen' : 'Erledigt'"
-          :aria-label="challenge.done ? 'Wieder offen' : 'Erledigt'"
-        >
-          <i class="bi" :class="challenge.done ? 'bi-arrow-counterclockwise' : 'bi-check-lg'"></i>
-        </button>
-      </div>
-
+      <button
+        class="icon-btn toggle"
+        @click="$emit('toggle', challenge)"
+        :title="challenge.done ? 'Wieder offen' : 'Erledigt'"
+      >
+        <i class="bi" :class="challenge.done ? 'bi-arrow-counterclockwise' : 'bi-check-lg'"></i>
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.challenge-title {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.challenge-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 14px 16px;
+  border-radius: 14px;
+
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+
+  transition: all 0.2s ease;
 }
-.min-width-0 {
+
+.challenge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
+}
+
+.icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #f4f6ff;
+  color: #4f46e5;
+}
+
+.content {
+  min-width: 0;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.title.done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.meta {
+  margin-top: 4px;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: transparent;
+  color: #555;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.icon-btn:hover {
+  background: #f3f4f6;
+}
+
+.icon-btn.delete:hover {
+  color: #ef4444;
+}
+
+.icon-btn.edit:hover {
+  color: #3b82f6;
+}
+
+.icon-btn.toggle:hover {
+  color: #22c55e;
+}
+
+.is-done {
+  background: #fafafa;
+  border-color: #eee;
 }
 </style>
